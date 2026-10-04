@@ -16,6 +16,42 @@ describe("resolveSandboxProvider", () => {
     expect(resolveSandboxProvider({ SANDBOX_PROVIDER: "daytona" })).toBe("none");
     expect(resolveSandboxProvider({ SANDBOX_PROVIDER: "createos" })).toBe("none");
     expect(resolveSandboxProvider({ SANDBOX_PROVIDER: "box" })).toBe("none");
+    expect(resolveSandboxProvider({ SANDBOX_PROVIDER: "computesdk" })).toBe("none");
+    expect(
+      resolveSandboxProvider({ SANDBOX_PROVIDER: "computesdk", COMPUTESDK_PROVIDER: "e2b" }),
+    ).toBe("none");
+    expect(
+      resolveSandboxProvider({
+        SANDBOX_PROVIDER: "computesdk",
+        COMPUTESDK_PROVIDER: "flyio",
+        FLY_API_TOKEN: "test-token",
+      }),
+    ).toBe("none");
+  });
+
+  it("keeps computesdk when its backend credential is set", () => {
+    expect(
+      resolveSandboxProvider({
+        SANDBOX_PROVIDER: "computesdk",
+        COMPUTESDK_PROVIDER: "e2b",
+        E2B_API_KEY: "test-e2b-key",
+      }),
+    ).toBe("computesdk");
+    expect(
+      resolveSandboxProvider({
+        SANDBOX_PROVIDER: "computesdk",
+        COMPUTESDK_PROVIDER: "namespace",
+        NSC_TOKEN_FILE: "/run/secrets/nsc",
+      }),
+    ).toBe("computesdk");
+    expect(
+      resolveSandboxProvider({
+        SANDBOX_PROVIDER: "computesdk",
+        COMPUTESDK_PROVIDER: "modal",
+        MODAL_TOKEN_ID: "tok-id",
+        MODAL_TOKEN_SECRET: "tok-secret",
+      }),
+    ).toBe("computesdk");
   });
 
   it("keeps CreateOS when its API key is set", () => {

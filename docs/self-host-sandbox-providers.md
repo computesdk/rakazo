@@ -52,6 +52,7 @@ Set `SANDBOX_PROVIDER` to exactly one of:
 | `e2b` | `E2B_API_KEY` | Hosted sandboxes |
 | `daytona` | `DAYTONA_API_KEY` | Optional `DAYTONA_API_URL`, `DAYTONA_TARGET`, `DAYTONA_SNAPSHOT` |
 | `box` | `BOX_API_KEY` | Optional `BOX_API_URL` (see `.env.example`) |
+| `computesdk` | `COMPUTESDK_PROVIDER` + backend key | ComputeSDK multiplexing: `e2b`, `daytona`, `namespace`, `modal`, `runloop`; see `.env.example` |
 
 Remote paths still need a working API/worker; they do not replace Postgres or
 the web UI. They require egress to the provider. For air-gapped hosts prefer
@@ -67,7 +68,7 @@ docker compose --env-file .env -f docker-compose.images.yml up -d
 curl -fsS http://127.0.0.1:3100/internal/health
 ```
 
-Confirm `sandbox` equals the intended provider (`e2b`, `daytona`, or `box`).
+Confirm `sandbox` equals the intended provider (`e2b`, `daytona`, `box`, or `computesdk`).
 HTTP 200 alone does not verify a remote provider: a missing API key falls back to `sandbox: "none"`.
 A present but invalid key still reports the selected provider. Open a bot's computer to verify
 provisioning and desktop access.

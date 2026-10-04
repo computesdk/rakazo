@@ -1,6 +1,14 @@
 import type { SandboxProvider } from "@rakazo/adapter-kit";
 import { BoxSandboxEmulator } from "./box-emulator.js";
 import { BoxSandboxProvider } from "./box-sandbox.js";
+import {
+  computesdkBackend,
+  computesdkBackendEnvNames,
+  computesdkBackendIds,
+  computesdkBackendReady,
+} from "./computesdk-backends.js";
+import { ComputeSdkSandboxEmulator } from "./computesdk-emulator.js";
+import { ComputeSdkSandboxProvider } from "./computesdk-sandbox.js";
 import { CreateOSSandboxProvider } from "./createos-sandbox.js";
 import { DaytonaSandboxEmulator } from "./daytona-emulator.js";
 import { DaytonaSandboxProvider } from "./daytona-sandbox.js";
@@ -24,11 +32,18 @@ export interface SandboxProviderOptions {
   createosRootfs?: string;
   boxApiKey?: string;
   boxApiUrl?: string;
+  /** ComputeSDK backend id (e2b | daytona | namespace | modal | runloop). */
+  computesdkProvider?: string;
+  computesdkImage?: string;
+  computesdkTemplateId?: string;
+  computesdkSnapshotId?: string;
+  /** Env the ComputeSDK backend registry reads vendor credentials from. */
+  computesdkEnv?: NodeJS.ProcessEnv;
   dataDir?: string;
 }
 
 function missingRemoteKey(
-  provider: "e2b" | "daytona" | "createos" | "box",
+  provider: "e2b" | "daytona" | "createos" | "box" | "computesdk",
   envName: string,
 ): SandboxProvider {
   return new NoneSandboxProvider(
@@ -63,6 +78,27 @@ export function createSandboxProvider(kind: string, opts: SandboxProviderOptions
     case "box":
       if (!opts.boxApiKey?.trim()) return missingRemoteKey("box", "BOX_API_KEY");
       return new BoxSandboxProvider({ apiKey: opts.boxApiKey, apiUrl: opts.boxApiUrl });
+    case "computesdk": {
+      const backendId = opts.computesdkProvider?.trim();
+      if (!backendId) return missingRemoteKey("computesdk", "COMPUTESDK_PROVIDER");
+      const backend = computesdkBackend(backendId);
+      if (!backend) {
+        return new NoneSandboxProvider(
+          `Computers unavailable: unknown COMPUTESDK_PROVIDER "${backendId}". Use ${computesdkBackendIds()}.`,
+        );
+      }
+      const env = opts.computesdkEnv ?? process.env;
+      if (!computesdkBackendReady(backend, env)) {
+        return missingRemoteKey("computesdk", computesdkBackendEnvNames(backend));
+      }
+      return new ComputeSdkSandboxProvider({
+        provider: backend.create(env),
+        backend: backend.id,
+        image: opts.computesdkImage,
+        templateId: opts.computesdkTemplateId,
+        snapshotId: opts.computesdkSnapshotId,
+      });
+    }
     case "docker":
       return new DockerSandboxProvider(
         opts.supervisorUrl ?? "http://127.0.0.1:7091",
@@ -74,6 +110,8 @@ export function createSandboxProvider(kind: string, opts: SandboxProviderOptions
       return new DaytonaSandboxEmulator();
     case "box-emulator":
       return new BoxSandboxEmulator();
+    case "computesdk-emulator":
+      return new ComputeSdkSandboxEmulator();
     case "desktop":
       return new DesktopSandboxProvider({
         root: opts.dataDir,
@@ -82,7 +120,7 @@ export function createSandboxProvider(kind: string, opts: SandboxProviderOptions
       return new FakeSandboxProvider();
     default:
       throw new Error(
-        `Unknown SANDBOX_PROVIDER "${kind}". Use none | docker | e2b | daytona | createos | box | e2b-emulator | daytona-emulator | box-emulator | desktop | fake.`,
+        `Unknown SANDBOX_PROVIDER "${kind}". Use none | docker | e2b | daytona | createos | box | computesdk | e2b-emulator | daytona-emulator | box-emulator | computesdk-emulator | desktop | fake.`,
       );
   }
 }
