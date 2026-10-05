@@ -1,4 +1,3 @@
-import { computesdkBackend, computesdkBackendReady } from "./computesdk-backends.js";
 import type { SandboxProviderOptions } from "./sandbox-factory.js";
 
 /** Empty or remote provider without a key becomes none so services can boot for signup. */
@@ -11,10 +10,7 @@ export function resolveSandboxProvider(source: NodeJS.ProcessEnv = process.env):
   if (requested === "daytona" && !optional(source.DAYTONA_API_KEY)) return "none";
   if (requested === "createos" && !optional(source.CREATEOS_SANDBOX_API_KEY)) return "none";
   if (requested === "box" && !optional(source.BOX_API_KEY)) return "none";
-  if (requested === "computesdk") {
-    const backend = computesdkBackend(source.COMPUTESDK_PROVIDER ?? "");
-    if (!backend || !computesdkBackendReady(backend, source)) return "none";
-  }
+  if (requested === "computesdk" && !optional(source.COMPUTESDK_PROVIDER)) return "none";
   // Production without a supervisor token cannot run Docker computers; boot as none instead of exiting.
   if (
     requested === "docker" &&
@@ -45,7 +41,6 @@ export function sandboxProviderOptionsFromEnv(
   | "computesdkImage"
   | "computesdkTemplateId"
   | "computesdkSnapshotId"
-  | "computesdkEnv"
 > {
   return {
     e2bApiKey: source.E2B_API_KEY,
@@ -62,7 +57,6 @@ export function sandboxProviderOptionsFromEnv(
     computesdkImage: source.COMPUTESDK_IMAGE,
     computesdkTemplateId: source.COMPUTESDK_TEMPLATE_ID,
     computesdkSnapshotId: source.COMPUTESDK_SNAPSHOT_ID,
-    computesdkEnv: source,
   };
 }
 

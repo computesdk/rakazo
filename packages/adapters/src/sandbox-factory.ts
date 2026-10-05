@@ -1,13 +1,8 @@
 import type { SandboxProvider } from "@rakazo/adapter-kit";
 import { BoxSandboxEmulator } from "./box-emulator.js";
 import { BoxSandboxProvider } from "./box-sandbox.js";
-import {
-  computesdkBackend,
-  computesdkBackendEnvNames,
-  computesdkBackendIds,
-  computesdkBackendReady,
-} from "./computesdk-backends.js";
 import { ComputeSdkSandboxEmulator } from "./computesdk-emulator.js";
+import { loadComputeSdkProvider } from "./computesdk-loader.js";
 import { ComputeSdkSandboxProvider } from "./computesdk-sandbox.js";
 import { CreateOSSandboxProvider } from "./createos-sandbox.js";
 import { DaytonaSandboxEmulator } from "./daytona-emulator.js";
@@ -32,13 +27,11 @@ export interface SandboxProviderOptions {
   createosRootfs?: string;
   boxApiKey?: string;
   boxApiUrl?: string;
-  /** ComputeSDK backend id (e2b | daytona | namespace | modal | runloop). */
+  /** ComputeSDK backend name; resolves any installed @computesdk/<name> package. */
   computesdkProvider?: string;
   computesdkImage?: string;
   computesdkTemplateId?: string;
   computesdkSnapshotId?: string;
-  /** Env the ComputeSDK backend registry reads vendor credentials from. */
-  computesdkEnv?: NodeJS.ProcessEnv;
   dataDir?: string;
 }
 
@@ -81,23 +74,18 @@ export function createSandboxProvider(kind: string, opts: SandboxProviderOptions
     case "computesdk": {
       const backendId = opts.computesdkProvider?.trim();
       if (!backendId) return missingRemoteKey("computesdk", "COMPUTESDK_PROVIDER");
-      const backend = computesdkBackend(backendId);
-      if (!backend) {
-        return new NoneSandboxProvider(
-          `Computers unavailable: unknown COMPUTESDK_PROVIDER "${backendId}". Use ${computesdkBackendIds()}.`,
-        );
+      try {
+        return new ComputeSdkSandboxProvider({
+          provider: loadComputeSdkProvider(backendId),
+          backend: backendId,
+          image: opts.computesdkImage,
+          templateId: opts.computesdkTemplateId,
+          snapshotId: opts.computesdkSnapshotId,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return new NoneSandboxProvider(`Computers unavailable: ${message}`);
       }
-      const env = opts.computesdkEnv ?? process.env;
-      if (!computesdkBackendReady(backend, env)) {
-        return missingRemoteKey("computesdk", computesdkBackendEnvNames(backend));
-      }
-      return new ComputeSdkSandboxProvider({
-        provider: backend.create(env),
-        backend: backend.id,
-        image: opts.computesdkImage,
-        templateId: opts.computesdkTemplateId,
-        snapshotId: opts.computesdkSnapshotId,
-      });
     }
     case "docker":
       return new DockerSandboxProvider(

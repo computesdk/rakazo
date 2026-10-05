@@ -52,7 +52,7 @@ Set `SANDBOX_PROVIDER` to exactly one of:
 | `e2b` | `E2B_API_KEY` | Hosted sandboxes |
 | `daytona` | `DAYTONA_API_KEY` | Optional `DAYTONA_API_URL`, `DAYTONA_TARGET`, `DAYTONA_SNAPSHOT` |
 | `box` | `BOX_API_KEY` | Optional `BOX_API_URL` (see `.env.example`) |
-| `computesdk` | `COMPUTESDK_PROVIDER` + backend key | ComputeSDK multiplexing: `e2b`, `daytona`, `namespace`, `modal`, `runloop`; see `.env.example` |
+| `computesdk` | `COMPUTESDK_PROVIDER` + backend key | ComputeSDK multiplexing; resolves any installed `@computesdk/<name>` package (bundled: `e2b`, `daytona`, `namespace`, `modal`, `runloop`). Backend failures surface the provider's own reason; see `.env.example` |
 
 Remote paths still need a working API/worker; they do not replace Postgres or
 the web UI. They require egress to the provider. For air-gapped hosts prefer

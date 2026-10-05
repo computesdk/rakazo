@@ -39,12 +39,6 @@ describe("createSandboxProvider", () => {
     expect(createSandboxProvider("createos", {}).describe().id).toBe("none");
     expect(createSandboxProvider("box", {}).describe().id).toBe("none");
     expect(createSandboxProvider("computesdk", {}).describe().id).toBe("none");
-    expect(
-      createSandboxProvider("computesdk", {
-        computesdkProvider: "e2b",
-        computesdkEnv: {},
-      }).describe().id,
-    ).toBe("none");
     await expect(
       createSandboxProvider("e2b", {}).provision({ botId: "b", homePath: "/tmp" }, ctx),
     ).rejects.toThrow(/E2B_API_KEY/);
@@ -55,22 +49,18 @@ describe("createSandboxProvider", () => {
       createSandboxProvider("createos", { createosApiKey: "test-createos-key" }).describe().id,
     ).toBe("createos");
     expect(createSandboxProvider("box", { boxApiKey: "test-box-key" }).describe().id).toBe("box");
-    expect(
-      createSandboxProvider("computesdk", {
-        computesdkProvider: "e2b",
-        computesdkEnv: { E2B_API_KEY: "test-e2b-key" },
-      }).describe().id,
-    ).toBe("computesdk");
+    expect(createSandboxProvider("computesdk", { computesdkProvider: "e2b" }).describe().id).toBe(
+      "computesdk",
+    );
   });
 
   it("keeps computers unavailable for an unknown ComputeSDK backend", async () => {
     const provider = createSandboxProvider("computesdk", {
-      computesdkProvider: "flyio",
-      computesdkEnv: {},
+      computesdkProvider: "not-a-real-backend",
     });
     expect(provider.describe().id).toBe("none");
     await expect(provider.provision({ botId: "b", homePath: "/tmp" }, ctx)).rejects.toThrow(
-      /COMPUTESDK_PROVIDER/,
+      /@computesdk\/not-a-real-backend/,
     );
   });
 
