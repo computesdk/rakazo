@@ -38,6 +38,7 @@ describe("createSandboxProvider", () => {
     expect(createSandboxProvider("daytona", {}).describe().id).toBe("none");
     expect(createSandboxProvider("createos", {}).describe().id).toBe("none");
     expect(createSandboxProvider("box", {}).describe().id).toBe("none");
+    expect(createSandboxProvider("computesdk", {}).describe().id).toBe("none");
     await expect(
       createSandboxProvider("e2b", {}).provision({ botId: "b", homePath: "/tmp" }, ctx),
     ).rejects.toThrow(/E2B_API_KEY/);
@@ -48,11 +49,30 @@ describe("createSandboxProvider", () => {
       createSandboxProvider("createos", { createosApiKey: "test-createos-key" }).describe().id,
     ).toBe("createos");
     expect(createSandboxProvider("box", { boxApiKey: "test-box-key" }).describe().id).toBe("box");
+    expect(createSandboxProvider("computesdk", { computesdkProvider: "e2b" }).describe().id).toBe(
+      "computesdk",
+    );
+  });
+
+  it("keeps computers unavailable for an unknown ComputeSDK backend", async () => {
+    const provider = createSandboxProvider("computesdk", {
+      computesdkProvider: "not-a-real-backend",
+    });
+    expect(provider.describe().id).toBe("none");
+    await expect(provider.provision({ botId: "b", homePath: "/tmp" }, ctx)).rejects.toThrow(
+      /@computesdk\/not-a-real-backend/,
+    );
+  });
+
+  it("returns the ComputeSDK emulator", () => {
+    expect(createSandboxProvider("computesdk-emulator", {}).describe().id).toBe(
+      "computesdk-emulator",
+    );
   });
 
   it("throws on unknown provider", () => {
     expect(() => createSandboxProvider("bogus", {})).toThrow(
-      'Unknown SANDBOX_PROVIDER "bogus". Use none | docker | e2b | daytona | createos | box | e2b-emulator | daytona-emulator | box-emulator | desktop | fake.',
+      'Unknown SANDBOX_PROVIDER "bogus". Use none | docker | e2b | daytona | createos | box | computesdk | e2b-emulator | daytona-emulator | box-emulator | computesdk-emulator | desktop | fake.',
     );
   });
 });

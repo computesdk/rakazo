@@ -45,6 +45,7 @@ export const SandboxKind = z.enum([
   "daytona",
   "createos",
   "box",
+  "computesdk",
   "desktop",
   "fake",
 ]);

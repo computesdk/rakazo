@@ -16,6 +16,24 @@ describe("resolveSandboxProvider", () => {
     expect(resolveSandboxProvider({ SANDBOX_PROVIDER: "daytona" })).toBe("none");
     expect(resolveSandboxProvider({ SANDBOX_PROVIDER: "createos" })).toBe("none");
     expect(resolveSandboxProvider({ SANDBOX_PROVIDER: "box" })).toBe("none");
+    expect(resolveSandboxProvider({ SANDBOX_PROVIDER: "computesdk" })).toBe("none");
+  });
+
+  it("keeps computesdk whenever a backend name is set", () => {
+    // Backend credential errors surface at provision with the vendor's own
+    // message rather than silently degrading to none at env resolution.
+    expect(
+      resolveSandboxProvider({
+        SANDBOX_PROVIDER: "computesdk",
+        COMPUTESDK_PROVIDER: "e2b",
+      }),
+    ).toBe("computesdk");
+    expect(
+      resolveSandboxProvider({
+        SANDBOX_PROVIDER: "computesdk",
+        COMPUTESDK_PROVIDER: "any-backend-name",
+      }),
+    ).toBe("computesdk");
   });
 
   it("keeps CreateOS when its API key is set", () => {
