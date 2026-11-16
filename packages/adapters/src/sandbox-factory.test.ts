@@ -33,6 +33,7 @@ describe("createSandboxProvider", () => {
     expect((await createSandboxProvider("boat", {})).describe().id).toBe("none");
     expect((await createSandboxProvider("boxd", {})).describe().id).toBe("none");
     expect((await createSandboxProvider("instabox", {})).describe().id).toBe("none");
+    expect((await createSandboxProvider("computesdk", {})).describe().id).toBe("none");
     await expect(
       (await createSandboxProvider("e2b", {})).provision({ botId: "b", homePath: "/tmp" }, ctx),
     ).rejects.toThrow(/E2B_API_KEY/);
@@ -56,6 +57,22 @@ describe("createSandboxProvider", () => {
       (await createSandboxProvider("instabox", { instaboxApiKey: "test-instabox-key" })).describe()
         .id,
     ).toBe("instabox");
+    expect(
+      (await createSandboxProvider("computesdk", { computesdkProvider: "e2b" })).describe().id,
+    ).toBe("computesdk");
+    expect(
+      (await createSandboxProvider("computesdk", { computesdkProvider: "platform" })).describe().id,
+    ).toBe("computesdk");
+  });
+
+  it("keeps computers unavailable for an unknown ComputeSDK backend", async () => {
+    const provider = await createSandboxProvider("computesdk", {
+      computesdkProvider: "not-a-real-backend",
+    });
+    expect(provider.describe().id).toBe("none");
+    await expect(provider.provision({ botId: "b", homePath: "/tmp" }, ctx)).rejects.toThrow(
+      /@computesdk\/not-a-real-backend/,
+    );
   });
 
   it("refuses the desktop provider in a production server process", async () => {
@@ -149,7 +166,7 @@ describe("createSandboxProvider", () => {
 
   it("throws on unknown provider", async () => {
     await expect(createSandboxProvider("bogus", {})).rejects.toThrow(
-      'Unknown SANDBOX_PROVIDER "bogus". Use none | docker | e2b | novita | daytona | createos | boat | boxd | instabox | railway | kubernetes | incus | local-vm | wuying | desktop | fake.',
+      'Unknown SANDBOX_PROVIDER "bogus". Use none | docker | e2b | novita | daytona | createos | computesdk | boat | boxd | instabox | railway | kubernetes | incus | local-vm | wuying | desktop | fake.',
     );
   });
 

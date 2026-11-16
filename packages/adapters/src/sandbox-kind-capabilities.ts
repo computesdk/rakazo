@@ -3,6 +3,7 @@ import { DEFAULT_COMPUTER_SCREEN } from "@rakazo/core";
 import { appleContainerSandboxCapabilities } from "./apple-container-capabilities.js";
 import { boatSandboxCapabilities } from "./boat-capabilities.js";
 import { boxdSandboxCapabilities } from "./boxd-capabilities.js";
+import { computesdkSandboxCapabilities } from "./computesdk-capabilities.js";
 import { createosSandboxCapabilities } from "./createos-capabilities.js";
 import { daytonaSandboxCapabilities } from "./daytona-capabilities.js";
 import { desktopSandboxCapabilities } from "./desktop-capabilities.js";
@@ -28,6 +29,7 @@ export const sandboxCapabilitiesByKind = {
   novita: novitaSandboxCapabilities,
   daytona: daytonaSandboxCapabilities,
   createos: createosSandboxCapabilities,
+  computesdk: computesdkSandboxCapabilities,
   boat: boatSandboxCapabilities,
   boxd: boxdSandboxCapabilities,
   instabox: instaboxSandboxCapabilities,

@@ -10,6 +10,7 @@ export function resolveSandboxProvider(source: NodeJS.ProcessEnv = process.env):
   if (requested === "novita" && !optional(source.NOVITA_API_KEY)) return "none";
   if (requested === "daytona" && !optional(source.DAYTONA_API_KEY)) return "none";
   if (requested === "createos" && !optional(source.CREATEOS_SANDBOX_API_KEY)) return "none";
+  if (requested === "computesdk" && !optional(source.COMPUTESDK_PROVIDER)) return "none";
   if (requested === "boat" && !boatApiKeyFromEnv(source)) return "none";
   if (requested === "boxd" && !optional(source.BOXD_API_KEY)) return "none";
   if (requested === "instabox" && !optional(source.INSTABOX_API_KEY)) return "none";
@@ -66,6 +67,10 @@ export function sandboxProviderOptionsFromEnv(
   | "createosBaseUrl"
   | "createosShape"
   | "createosRootfs"
+  | "computesdkProvider"
+  | "computesdkImage"
+  | "computesdkTemplateId"
+  | "computesdkSnapshotId"
   | "railwayApiToken"
   | "railwayEnvironmentId"
   | "railwayMaxWorkspaceFileBytes"
@@ -120,6 +125,10 @@ export function sandboxProviderOptionsFromEnv(
     createosBaseUrl: source.CREATEOS_SANDBOX_BASE_URL,
     createosShape: source.CREATEOS_SANDBOX_SHAPE,
     createosRootfs: source.CREATEOS_SANDBOX_ROOTFS,
+    computesdkProvider: source.COMPUTESDK_PROVIDER,
+    computesdkImage: source.COMPUTESDK_IMAGE,
+    computesdkTemplateId: source.COMPUTESDK_TEMPLATE_ID,
+    computesdkSnapshotId: source.COMPUTESDK_SNAPSHOT_ID,
     railwayApiToken: source.RAILWAY_API_TOKEN,
     railwayEnvironmentId: source.RAILWAY_ENVIRONMENT_ID,
     railwayMaxWorkspaceFileBytes: source.RAILWAY_MAX_WORKSPACE_FILE_BYTES,
