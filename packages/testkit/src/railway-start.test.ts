@@ -43,7 +43,10 @@ echo "pnpm $* owner=$owner parent=$parent" >> "$COMMAND_LOG"
 exit 0
 `,
   );
-  write(path.join(bin, "node"), "#!/bin/bash\necho test-environment\n");
+  write(
+    path.join(bin, "node"),
+    `#!/bin/bash\necho "node $(echo "$*" | tr '\\n' ' ') owner=no" >> "$COMMAND_LOG"\necho test-environment\n`,
+  );
   const result = spawnSync("/bin/bash", [path.join(repoRoot, "infra/railway/start.sh")], {
     cwd: root,
     env: {
@@ -75,6 +78,22 @@ describe.skipIf(process.getuid?.() === 0)("Railway start script", () => {
       expect(line).toContain("owner=no");
       expect(line).not.toContain("parent=yes");
     }
+  });
+
+  it("skips the Railway sandbox environment when the provider is not railway", () => {
+    const { lines } = start({ SANDBOX_PROVIDER: "computesdk" });
+    expect(lines.some((line) => line.includes("sandbox-environment.mjs"))).toBe(false);
+    expect(lines.some((line) => line.includes("bootstrap-owner.js"))).toBe(true);
+  });
+
+  it("creates the Railway sandbox environment by default", () => {
+    const { lines } = start();
+    expect(lines.some((line) => line.includes("sandbox-environment.mjs"))).toBe(true);
+  });
+
+  it("creates the Railway sandbox environment when the value has surrounding whitespace", () => {
+    const { lines } = start({ SANDBOX_PROVIDER: " railway " });
+    expect(lines.some((line) => line.includes("sandbox-environment.mjs"))).toBe(true);
   });
 
   it("serves nothing when migrations fail", () => {
