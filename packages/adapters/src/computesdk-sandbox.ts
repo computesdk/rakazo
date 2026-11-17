@@ -26,6 +26,9 @@ import { sandboxCommandArgv } from "./sandbox-command-environment.js";
 const DISPLAY_START = 20;
 const WORKSPACE_DIRNAME = "rakazo-home";
 const BROWSER_PROFILES_DIRNAME = ".browser-profiles";
+/** The platform backend rejects a runCommand timeout above 290s per request. */
+const PLATFORM_COMMAND_TIMEOUT_MS = 290_000;
+
 /** Inline base64 chunks stay well inside provider command-length limits. */
 const BASE64_CHUNK_BYTES = 192 * 1024;
 const BASE64_CHUNK_CHARS = Math.ceil(BASE64_CHUNK_BYTES / 3) * 4;
@@ -181,11 +184,17 @@ export class ComputeSdkSandboxProvider implements SandboxProvider {
     context?: AdapterContext,
     options?: { cwd?: string; env?: Record<string, string>; timeout?: number },
   ) {
+    const requested = options?.timeout ?? boundedSandboxCommandTimeoutMs(undefined);
+    // Some backends cap a single runCommand request (platform: 290s); clamp to
+    // the cap instead of being rejected up front. Genuinely longer commands need
+    // the backend's detached/process API, which this adapter does not use.
+    const timeout =
+      this.backend === "platform" ? Math.min(requested, PLATFORM_COMMAND_TIMEOUT_MS) : requested;
     try {
       return await sandbox.runCommand(command, {
         cwd: options?.cwd,
         env: options?.env,
-        timeout: options?.timeout ?? boundedSandboxCommandTimeoutMs(undefined),
+        timeout,
       });
     } catch (error) {
       if (context?.signal.aborted) throw error;
