@@ -16,8 +16,12 @@ if [[ "${1:-}" != serve ]]; then
   exec env -u DATABASE_MIGRATION_URL bash "$0" serve
 fi
 
-export RAILWAY_ENVIRONMENT_ID
-RAILWAY_ENVIRONMENT_ID=$(node infra/railway/sandbox-environment.mjs)
+# The Railway sandbox provider needs a dedicated environment for computers; other
+# providers (computesdk, e2b, ...) provision their own, so skip the bootstrap for them.
+if [[ "${SANDBOX_PROVIDER:-railway}" == railway ]]; then
+  export RAILWAY_ENVIRONMENT_ID
+  RAILWAY_ENVIRONMENT_ID=$(node infra/railway/sandbox-environment.mjs)
+fi
 pnpm --filter @rakazo/api exec node dist/cli/bootstrap-owner.js
 unset OWNER_PASSWORD
 # Personal template: registration is operator configuration, never an app-account permission.
