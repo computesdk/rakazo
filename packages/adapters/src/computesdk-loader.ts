@@ -1,7 +1,38 @@
 import { createRequire } from "node:module";
 import type { ComputeSdkProvider } from "./computesdk-sandbox.js";
 
-const require = createRequire(import.meta.url);
+const localRequire = createRequire(import.meta.url);
+
+/**
+ * Bundled entrypoints relocate this code (e.g. the api runs apps/api/dist/index.js),
+ * where pnpm's layout no longer exposes @rakazo/adapters' dependencies. Anchor the
+ * lookup at the installed @rakazo/adapters package itself, which every consumer of
+ * the factory depends on, falling back to this file's own location for source runs.
+ */
+function providerModule(specifier: string): Record<string, unknown> {
+  const anchors = [import.meta.url];
+  let anchorError: unknown;
+  try {
+    anchors.push(localRequire.resolve("@rakazo/adapters"));
+  } catch (error) {
+    anchorError = error;
+  }
+  let lastError: unknown;
+  for (const anchor of anchors) {
+    try {
+      return createRequire(anchor)(specifier) as Record<string, unknown>;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "MODULE_NOT_FOUND") throw error;
+      lastError = error;
+    }
+  }
+  // A broken @rakazo/adapters install (unresolvable exports, bad metadata) is
+  // the real failure; surface it rather than blaming the provider package.
+  if (anchorError && (anchorError as NodeJS.ErrnoException).code !== "MODULE_NOT_FOUND") {
+    throw anchorError;
+  }
+  throw lastError;
+}
 
 const PROVIDER_NAME_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 
@@ -36,7 +67,7 @@ export function loadComputeSdkProvider(name: string): ComputeSdkProvider {
   }
   let mod: Record<string, unknown>;
   try {
-    mod = require(`@computesdk/${id}`) as Record<string, unknown>;
+    mod = providerModule(`@computesdk/${id}`);
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
     if (code === "MODULE_NOT_FOUND") {
