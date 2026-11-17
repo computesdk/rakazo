@@ -123,7 +123,12 @@ describe("ComputeSdkSandboxProvider", () => {
   });
 
   it("clamps runCommand timeouts to the platform request limit on platform", async () => {
-    const runCommand = vi.fn(async () => ({ stdout: "", stderr: "", exitCode: 0 }));
+    const runCommand = vi.fn(
+      async (
+        _command: string,
+        _options?: { cwd?: string; env?: Record<string, string>; timeout?: number },
+      ) => ({ stdout: "", stderr: "", exitCode: 0 }),
+    );
     const { provider } = fixture(fakeSandbox({ runCommand }));
     const adapter = new ComputeSdkSandboxProvider({ provider, backend: "platform" });
     const ref = await adapter.provision({ botId: "bot-a", homePath: "/unused" }, context);
@@ -133,7 +138,12 @@ describe("ComputeSdkSandboxProvider", () => {
   });
 
   it("keeps the configured command timeout on other backends", async () => {
-    const runCommand = vi.fn(async () => ({ stdout: "", stderr: "", exitCode: 0 }));
+    const runCommand = vi.fn(
+      async (
+        _command: string,
+        _options?: { cwd?: string; env?: Record<string, string>; timeout?: number },
+      ) => ({ stdout: "", stderr: "", exitCode: 0 }),
+    );
     const { provider } = fixture(fakeSandbox({ runCommand }));
     const adapter = new ComputeSdkSandboxProvider({ provider, backend: "e2b" });
     const ref = await adapter.provision({ botId: "bot-a", homePath: "/unused" }, context);
