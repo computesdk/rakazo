@@ -98,6 +98,10 @@ const INDIRECT = {
   shared: [
     // core/secrets-guard.ts resolves these by name.
     "SANDBOX_SUPERVISOR_TOKEN",
+    // @computesdk/platform reads these itself when COMPUTESDK_PROVIDER=platform.
+    "COMPUTE_API_KEY",
+    "COMPUTE_PLATFORM_URL",
+    "COMPUTE_ORG",
     // pi-local-provider.ts reads these through a small helper.
     "RAKAZO_LOCAL_CONTEXT_WINDOW",
     "RAKAZO_LOCAL_MAX_TOKENS",

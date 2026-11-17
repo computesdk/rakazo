@@ -1,4 +1,6 @@
 import type { ComputerRef, SandboxProvider, UnreferencedMachineRecords } from "@rakazo/adapter-kit";
+import { loadComputeSdkProvider } from "./computesdk-loader.js";
+import { ComputeSdkSandboxProvider } from "./computesdk-sandbox.js";
 import { CreateOSSandboxProvider } from "./createos-sandbox.js";
 import { assertHostCommandsAllowed, DesktopSandboxProvider } from "./desktop-sandbox.js";
 import { DockerSandboxProvider } from "./docker-sandbox.js";
@@ -33,6 +35,11 @@ export interface SandboxProviderOptions {
   createosBaseUrl?: string;
   createosShape?: string;
   createosRootfs?: string;
+  /** ComputeSDK backend name; resolves any installed @computesdk/<name> package. */
+  computesdkProvider?: string;
+  computesdkImage?: string;
+  computesdkTemplateId?: string;
+  computesdkSnapshotId?: string;
   railwayApiToken?: string;
   railwayEnvironmentId?: string;
   railwayMaxWorkspaceFileBytes?: string;
@@ -229,11 +236,13 @@ export async function createSandboxProvider(
         referenceInUse: opts.referenceInUse,
       });
     }
+
     case "docker":
       return new DockerSandboxProvider(
         opts.supervisorUrl ?? "http://127.0.0.1:7091",
         opts.supervisorToken,
       );
+
     case "desktop":
       assertHostCommandsAllowed();
       return new DesktopSandboxProvider({
@@ -241,6 +250,22 @@ export async function createSandboxProvider(
       });
     case "fake":
       return new FakeSandboxProvider();
+    case "computesdk": {
+      const backendId = opts.computesdkProvider?.trim();
+      if (!backendId) return missingRemoteKey("computesdk", "COMPUTESDK_PROVIDER");
+      try {
+        return new ComputeSdkSandboxProvider({
+          provider: loadComputeSdkProvider(backendId),
+          backend: backendId,
+          image: opts.computesdkImage,
+          templateId: opts.computesdkTemplateId,
+          snapshotId: opts.computesdkSnapshotId,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return new NoneSandboxProvider(`Computers unavailable: ${message}`);
+      }
+    }
     default: {
       const _exhaustive: never = sandboxKind;
       throw new Error(`Unknown SANDBOX_PROVIDER "${_exhaustive}".`);

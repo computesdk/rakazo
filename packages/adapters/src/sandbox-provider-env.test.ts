@@ -19,6 +19,7 @@ describe("resolveSandboxProvider", () => {
     expect(resolveSandboxProvider({ SANDBOX_PROVIDER: "daytona" })).toBe("none");
     expect(resolveSandboxProvider({ SANDBOX_PROVIDER: "createos" })).toBe("none");
     expect(resolveSandboxProvider({ SANDBOX_PROVIDER: "boat" })).toBe("none");
+    expect(resolveSandboxProvider({ SANDBOX_PROVIDER: "computesdk" })).toBe("none");
     const wuying = {
       SANDBOX_PROVIDER: "wuying",
       WUYING_ACCESS_KEY_ID: "test-id",
@@ -81,6 +82,23 @@ describe("resolveSandboxProvider", () => {
     expect(sandboxProviderOptionsFromEnv(env)).toMatchObject({
       instaboxApiKey: "test-instabox-key",
     });
+  });
+
+  it("keeps computesdk whenever a backend name is set", () => {
+    // Backend credential errors surface at provision with the vendor's own
+    // message rather than silently degrading to none at env resolution.
+    expect(
+      resolveSandboxProvider({
+        SANDBOX_PROVIDER: "computesdk",
+        COMPUTESDK_PROVIDER: "e2b",
+      }),
+    ).toBe("computesdk");
+    expect(
+      resolveSandboxProvider({
+        SANDBOX_PROVIDER: "computesdk",
+        COMPUTESDK_PROVIDER: "any-backend-name",
+      }),
+    ).toBe("computesdk");
   });
 
   it("keeps CreateOS when its API key is set", () => {
