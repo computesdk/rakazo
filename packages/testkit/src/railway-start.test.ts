@@ -91,6 +91,11 @@ describe.skipIf(process.getuid?.() === 0)("Railway start script", () => {
     expect(lines.some((line) => line.includes("sandbox-environment.mjs"))).toBe(true);
   });
 
+  it("creates the Railway sandbox environment when the value has surrounding whitespace", () => {
+    const { lines } = start({ SANDBOX_PROVIDER: " railway " });
+    expect(lines.some((line) => line.includes("sandbox-environment.mjs"))).toBe(true);
+  });
+
   it("serves nothing when migrations fail", () => {
     const { result, lines } = start({ FAIL_MIGRATE: "1" });
     expect(result.status).not.toBe(0);

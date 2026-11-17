@@ -18,7 +18,11 @@ fi
 
 # The Railway sandbox provider needs a dedicated environment for computers; other
 # providers (computesdk, e2b, ...) provision their own, so skip the bootstrap for them.
-if [[ "${SANDBOX_PROVIDER:-railway}" == railway ]]; then
+# The app trims SANDBOX_PROVIDER before resolving it; match that here.
+provider="${SANDBOX_PROVIDER:-railway}"
+provider="${provider#"${provider%%[![:space:]]*}"}"
+provider="${provider%"${provider##*[![:space:]]}"}"
+if [[ $provider == railway ]]; then
   export RAILWAY_ENVIRONMENT_ID
   RAILWAY_ENVIRONMENT_ID=$(node infra/railway/sandbox-environment.mjs)
 fi
