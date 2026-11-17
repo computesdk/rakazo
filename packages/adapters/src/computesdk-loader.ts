@@ -11,10 +11,11 @@ const localRequire = createRequire(import.meta.url);
  */
 function providerModule(specifier: string): Record<string, unknown> {
   const anchors = [import.meta.url];
+  let anchorError: unknown;
   try {
     anchors.push(localRequire.resolve("@rakazo/adapters"));
-  } catch {
-    // The package name is not resolvable from here; the local anchor covers it.
+  } catch (error) {
+    anchorError = error;
   }
   let lastError: unknown;
   for (const anchor of anchors) {
@@ -24,6 +25,11 @@ function providerModule(specifier: string): Record<string, unknown> {
       if ((error as NodeJS.ErrnoException).code !== "MODULE_NOT_FOUND") throw error;
       lastError = error;
     }
+  }
+  // A broken @rakazo/adapters install (unresolvable exports, bad metadata) is
+  // the real failure; surface it rather than blaming the provider package.
+  if (anchorError && (anchorError as NodeJS.ErrnoException).code !== "MODULE_NOT_FOUND") {
+    throw anchorError;
   }
   throw lastError;
 }
