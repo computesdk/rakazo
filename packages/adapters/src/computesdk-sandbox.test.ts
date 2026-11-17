@@ -102,6 +102,41 @@ describe("ComputeSdkSandboxProvider", () => {
     expect(ref.providerRef).toBe(created.sandboxId);
   });
 
+  it("replaces a stored providerRef that the backend reports as stopped", async () => {
+    // Some backends list destroyed sandboxes too (platform does); a lookup that
+    // resolves does not mean the box is runnable.
+    const stopped = fakeSandbox({
+      sandboxId: "sbx-dead",
+      getInfo: vi.fn(async () => ({ status: "stopped" })),
+    });
+    const { provider, created } = fixture();
+    provider.sandbox.getById = vi.fn(async () => stopped);
+    const adapter = new ComputeSdkSandboxProvider({ provider, backend: "platform" });
+    const ref = await adapter.provision(
+      { botId: "bot-a", homePath: "/unused", providerRef: "sbx-dead", providerKind: "computesdk" },
+      context,
+    );
+    expect(provider.sandbox.create).toHaveBeenCalled();
+    expect(ref.providerRef).toBe(created.sandboxId);
+    expect(ref.fresh).toBe(true);
+  });
+
+  it("reconnects to a stored providerRef that still reports running", async () => {
+    const running = fakeSandbox({
+      sandboxId: "sbx-live",
+      getInfo: vi.fn(async () => ({ status: "running" })),
+    });
+    const { provider } = fixture();
+    provider.sandbox.getById = vi.fn(async () => running);
+    const adapter = new ComputeSdkSandboxProvider({ provider, backend: "platform" });
+    const ref = await adapter.provision(
+      { botId: "bot-a", homePath: "/unused", providerRef: "sbx-live", providerKind: "computesdk" },
+      context,
+    );
+    expect(provider.sandbox.create).not.toHaveBeenCalled();
+    expect(ref).toMatchObject({ id: "sbx-live", fresh: false });
+  });
+
   it("translates a dead sandbox into SandboxNotFoundError for the lifecycle", async () => {
     const dead = fakeSandbox({
       runCommand: vi.fn(async () => {

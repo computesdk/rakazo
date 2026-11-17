@@ -46,6 +46,8 @@ export interface ComputeSdkSandbox {
   ): Promise<{ stdout: string; stderr: string; exitCode: number }>;
   getUrl(options: { port: number; protocol?: string }): Promise<string>;
   destroy(): Promise<void>;
+  /** Provider-reported sandbox info; absent on backends without a status call. */
+  getInfo?(): Promise<{ status?: string }>;
   /** Raw provider sandbox (e2b Sandbox, daytona Sandbox, ...) for pause/keepalive. */
   getInstance?(): unknown;
 }
@@ -226,7 +228,9 @@ export class ComputeSdkSandboxProvider implements SandboxProvider {
   ): Promise<ComputerRef> {
     if (request.providerRef && request.providerKind === "computesdk") {
       const existing = await this.provider.sandbox.getById(request.providerRef);
-      if (existing) {
+      // Some backends return destroyed rows too (platform lists them); a stored
+      // ref is only reusable while the sandbox reports itself running.
+      if (existing && (await this.reusable(existing))) {
         this.boxes.set(existing.sandboxId, existing);
         return {
           id: existing.sandboxId,
@@ -236,7 +240,7 @@ export class ComputeSdkSandboxProvider implements SandboxProvider {
           fresh: false,
         };
       }
-      // A null lookup is the provider-neutral "gone": fall through to a replacement,
+      // A null or dead lookup is the provider-neutral "gone": fall through to a replacement,
       // which restores the workspace through importWorkspace.
     }
     const created = await this.provider.sandbox.create({
@@ -545,6 +549,18 @@ export class ComputeSdkSandboxProvider implements SandboxProvider {
   private forget(id: string): void {
     this.boxes.delete(id);
     this.environments.delete(id);
+  }
+
+  /** A looked-up sandbox is reusable only while it reports itself running. */
+  private async reusable(sandbox: ComputeSdkSandbox): Promise<boolean> {
+    if (!sandbox.getInfo) return true;
+    try {
+      return (await sandbox.getInfo()).status === "running";
+    } catch {
+      // Status unreadable: assume alive and let the first command surface any
+      // real error rather than discarding a healthy sandbox on a flake.
+      return true;
+    }
   }
 }
 
