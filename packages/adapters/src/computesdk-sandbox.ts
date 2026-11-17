@@ -554,13 +554,10 @@ export class ComputeSdkSandboxProvider implements SandboxProvider {
   /** A looked-up sandbox is reusable only while it reports itself running. */
   private async reusable(sandbox: ComputeSdkSandbox): Promise<boolean> {
     if (!sandbox.getInfo) return true;
-    try {
-      return (await sandbox.getInfo()).status === "running";
-    } catch {
-      // Status unreadable: assume alive and let the first command surface any
-      // real error rather than discarding a healthy sandbox on a flake.
-      return true;
-    }
+    // Status unreadable is treated as alive: the first command surfaces any real
+    // error rather than discarding a healthy box on a lookup flake.
+    const info = await bestEffort("read sandbox status", sandbox.getInfo());
+    return info === undefined || info.status === "running";
   }
 }
 
