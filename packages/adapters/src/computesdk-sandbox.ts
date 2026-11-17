@@ -16,11 +16,17 @@ import type {
 } from "@rakazo/adapter-kit";
 import { SandboxFileTooLargeError } from "@rakazo/adapter-kit";
 import { boundedSandboxCommandTimeoutMs } from "@rakazo/core";
-import { bestEffort } from "@rakazo/logging";
+import { bestEffort, getLogger } from "@rakazo/logging";
 import { sandboxIdleMs } from "./computer-idle.js";
 import { normalizeWorkspacePath, shellQuote, workspacePath } from "./computer-support.js";
 import { shouldSkipPortableWorkspaceFile } from "./computer-workspace.js";
-import { LinuxDesktop, onBotScreen, PREPARE_LINUX_DESKTOP } from "./linux-desktop.js";
+import {
+  INSTALL_LINUX_BROWSER,
+  LinuxDesktop,
+  onBotScreen,
+  PREPARE_LINUX_DESKTOP,
+} from "./linux-desktop.js";
+import { installPageBrowserCommand } from "./page-browser-install.js";
 import { sandboxCommandArgv } from "./sandbox-command-environment.js";
 
 const DISPLAY_START = 20;
@@ -278,6 +284,20 @@ export class ComputeSdkSandboxProvider implements SandboxProvider {
     const result = await this.runChecked(sandbox, PREPARE_LINUX_DESKTOP, context);
     if (result.exitCode !== 0) {
       throw new Error(result.stderr || "could not prepare computer desktop tools");
+    }
+    const browser = await this.runChecked(sandbox, INSTALL_LINUX_BROWSER, context);
+    if (browser.exitCode !== 0) {
+      throw new Error(browser.stderr || "could not install the computer browser");
+    }
+    // Without the helper the page tools fall back to the desktop tools, which
+    // still work, so a failed install warns rather than fails the boot.
+    const pageBrowser = await this.runChecked(sandbox, installPageBrowserCommand(), context);
+    if (pageBrowser.exitCode !== 0) {
+      getLogger().warn("sandbox.page_browser", {
+        provider: "computesdk",
+        outcome: "install_failed",
+        error: pageBrowser.stderr,
+      });
     }
   }
 
