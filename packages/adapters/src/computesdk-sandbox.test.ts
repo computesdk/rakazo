@@ -51,7 +51,7 @@ describe("ComputeSdkSandboxProvider", () => {
     expect(provider.sandbox.create).toHaveBeenCalledWith(
       expect.objectContaining({
         timeout: expect.any(Number),
-        metadata: { botId: "bot-a", rakazo: "computer" },
+        label: "rakazo-computer-bot-a",
       }),
     );
     expect(ref).toMatchObject({

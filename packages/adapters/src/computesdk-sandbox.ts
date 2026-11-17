@@ -232,7 +232,8 @@ export class ComputeSdkSandboxProvider implements SandboxProvider {
     }
     const created = await this.provider.sandbox.create({
       timeout: sandboxIdleMs(),
-      metadata: { botId: request.botId, rakazo: "computer" },
+      // The platform backend accepts only label/name, no metadata map.
+      label: `rakazo-computer-${request.botId}`,
       signal: context.signal,
       ...(this.image ? { image: this.image } : {}),
       ...(this.templateId ? { templateId: this.templateId } : {}),
