@@ -122,6 +122,36 @@ describe("ComputeSdkSandboxProvider", () => {
     expect(isSandboxGoneError(caught)).toBe(true);
   });
 
+  it("clamps runCommand timeouts to the platform request limit on platform", async () => {
+    const runCommand = vi.fn(
+      async (
+        _command: string,
+        _options?: { cwd?: string; env?: Record<string, string>; timeout?: number },
+      ) => ({ stdout: "", stderr: "", exitCode: 0 }),
+    );
+    const { provider } = fixture(fakeSandbox({ runCommand }));
+    const adapter = new ComputeSdkSandboxProvider({ provider, backend: "platform" });
+    const ref = await adapter.provision({ botId: "bot-a", homePath: "/unused" }, context);
+    for await (const _ of adapter.execute(ref, { argv: ["echo", "hi"] }, context));
+    const timeout = Math.max(...runCommand.mock.calls.map((call) => Number(call[1]?.timeout ?? 0)));
+    expect(timeout).toBeLessThanOrEqual(290_000);
+  });
+
+  it("keeps the configured command timeout on other backends", async () => {
+    const runCommand = vi.fn(
+      async (
+        _command: string,
+        _options?: { cwd?: string; env?: Record<string, string>; timeout?: number },
+      ) => ({ stdout: "", stderr: "", exitCode: 0 }),
+    );
+    const { provider } = fixture(fakeSandbox({ runCommand }));
+    const adapter = new ComputeSdkSandboxProvider({ provider, backend: "e2b" });
+    const ref = await adapter.provision({ botId: "bot-a", homePath: "/unused" }, context);
+    for await (const _ of adapter.execute(ref, { argv: ["echo", "hi"] }, context));
+    const timeout = Math.max(...runCommand.mock.calls.map((call) => Number(call[1]?.timeout ?? 0)));
+    expect(timeout).toBeGreaterThan(290_000);
+  });
+
   it("pauses via the raw vendor sandbox on stop when supported", async () => {
     const pause = vi.fn(async () => undefined);
     const sandbox = fakeSandbox({ getInstance: () => ({ pause }) });
