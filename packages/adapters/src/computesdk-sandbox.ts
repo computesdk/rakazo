@@ -450,7 +450,8 @@ export class ComputeSdkSandboxProvider implements SandboxProvider {
     const env = await this.computerEnvironment(computer);
     const target = workspacePath(env.workspaceDir, file.path);
     const encoded = Buffer.from(file.content).toString("base64");
-    const chunkBytes = this.backend === "platform" ? PLATFORM_BASE64_CHUNK_BYTES : BASE64_CHUNK_BYTES;
+    const chunkBytes =
+      this.backend === "platform" ? PLATFORM_BASE64_CHUNK_BYTES : BASE64_CHUNK_BYTES;
     const chunkChars = Math.ceil(chunkBytes / 3) * 4;
     const mkdir = `mkdir -p ${shellQuote(target.slice(0, target.lastIndexOf("/")) || env.workspaceDir)}`;
     if (!encoded) {
