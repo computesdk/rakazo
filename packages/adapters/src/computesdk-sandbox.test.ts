@@ -14,7 +14,12 @@ const context = {
 function fakeSandbox(overrides: Partial<ComputeSdkSandbox> = {}): ComputeSdkSandbox {
   return {
     sandboxId: "sbx-1",
-    runCommand: vi.fn(async () => ({ stdout: "/home/dev\n", stderr: "", exitCode: 0 })),
+    runCommand: vi.fn(
+      async (
+        _command: string,
+        _options?: { cwd?: string; env?: Record<string, string>; timeout?: number },
+      ) => ({ stdout: "/home/dev\n", stderr: "", exitCode: 0 }),
+    ),
     getUrl: vi.fn(async ({ port }: { port: number }) => `https://sbx-1-${port}.example.test`),
     destroy: vi.fn(async () => undefined),
     ...overrides,
@@ -135,6 +140,16 @@ describe("ComputeSdkSandboxProvider", () => {
     );
     expect(provider.sandbox.create).not.toHaveBeenCalled();
     expect(ref).toMatchObject({ id: "sbx-live", fresh: false });
+  });
+
+  it("prepare installs the desktop browser and the page-browser helper", async () => {
+    const { provider, created } = fixture();
+    const adapter = new ComputeSdkSandboxProvider({ provider, backend: "platform" });
+    const ref = await adapter.provision({ botId: "bot-a", homePath: "/unused" }, context);
+    await adapter.prepare(ref, context);
+    const commands = vi.mocked(created.runCommand).mock.calls.map((call) => call[0]);
+    expect(commands.some((command) => command.includes("google-chrome"))).toBe(true);
+    expect(commands.some((command) => command.includes("rakazo-page-browser"))).toBe(true);
   });
 
   it("translates a dead sandbox into SandboxNotFoundError for the lifecycle", async () => {

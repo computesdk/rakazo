@@ -520,7 +520,9 @@ export const PREPARE_LINUX_DESKTOP = [
 
 /** Installs Google Chrome on images that ship without a browser. */
 export const INSTALL_LINUX_BROWSER = [
-  "if ! command -v google-chrome >/dev/null && ! command -v chromium >/dev/null; then",
+  // The same executable names the launcher accepts (desktop-runtime.ts
+  // browserLauncherCommand): any of them already on PATH skips the install.
+  "if ! command -v rakazo-browser >/dev/null && ! command -v google-chrome >/dev/null && ! command -v google-chrome-stable >/dev/null && ! command -v chromium >/dev/null && ! command -v chromium-browser >/dev/null; then",
   '  if [ "$(id -u)" -eq 0 ]; then root=""; else root="sudo -n"; fi',
   "  package=$(mktemp /tmp/rakazo-chrome-XXXXXX.deb)",
   "  trap 'rm -f \"$package\"' EXIT",
