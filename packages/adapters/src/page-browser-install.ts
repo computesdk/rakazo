@@ -44,15 +44,15 @@ export function installAgentBrowserCommand(): string {
  * from this release's copy, unless they already match it. Small enough to run on every boot,
  * so a hosted computer always runs the helper its API was released with.
  */
-export function installPageBrowserFilesCommand(): string {
+function pageBrowserFilesSpec() {
   const wrapper = computerFile("rakazo-page-browser");
   const secrets = computerFile("page_secrets.py");
   const version = createHash("sha256").update(wrapper).update("\0").update(secrets).digest("hex");
   // One archive, so both files change together.
-  const archive = gzipSync(
+  const payload = gzipSync(
     JSON.stringify({ "rakazo-page-browser": wrapper, "page_secrets.py": secrets }),
     { level: 9 },
-  ).toString("base64");
+  );
   const unpack = [
     "import gzip, json, os, sys",
     "files = json.loads(gzip.decompress(sys.stdin.buffer.read()))",
@@ -65,11 +65,37 @@ export function installPageBrowserFilesCommand(): string {
     "    os.replace(target + '.new', target)",
     `open('/usr/local/lib/rakazo/page-browser.version', 'w').write(${JSON.stringify(version)})`,
   ].join("\n");
+  const current = `if [ "$(cat /usr/local/lib/rakazo/page-browser.version 2>/dev/null)" = ${version} ]; then exit 0; fi`;
+  return { payload, unpack, current };
+}
+
+export function installPageBrowserFilesCommand(): string {
+  const { payload, unpack, current } = pageBrowserFilesSpec();
+  const archive = payload.toString("base64");
   return [
     "set -eu",
-    `if [ "$(cat /usr/local/lib/rakazo/page-browser.version 2>/dev/null)" = ${version} ]; then exit 0; fi`,
+    current,
     asRoot,
     `printf '%s' ${shellQuote(archive)} | base64 -d | $root python3 -c ${shellQuote(unpack)}`,
+  ].join("\n");
+}
+
+/**
+ * The page-browser files as raw bytes for writing into a sandbox file, for
+ * providers whose command-size cap the inline archive exceeds.
+ */
+export function pageBrowserFilesPayload(): Uint8Array {
+  return new Uint8Array(pageBrowserFilesSpec().payload);
+}
+
+/** Install variant that reads the payload from a file inside the sandbox. */
+export function installPageBrowserFromFileCommand(filePath: string): string {
+  const { unpack, current } = pageBrowserFilesSpec();
+  return [
+    "set -eu",
+    current,
+    asRoot,
+    `$root python3 -c ${shellQuote(unpack)} < ${shellQuote(filePath)}`,
   ].join("\n");
 }
 

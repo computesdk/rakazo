@@ -26,7 +26,11 @@ import {
   onBotScreen,
   PREPARE_LINUX_DESKTOP,
 } from "./linux-desktop.js";
-import { installPageBrowserCommand } from "./page-browser-install.js";
+import {
+  installAgentBrowserCommand,
+  installPageBrowserFromFileCommand,
+  pageBrowserFilesPayload,
+} from "./page-browser-install.js";
 import { sandboxCommandArgv } from "./sandbox-command-environment.js";
 
 const DISPLAY_START = 20;
@@ -37,7 +41,8 @@ const PLATFORM_COMMAND_TIMEOUT_MS = 290_000;
 
 /** Inline base64 chunks stay well inside provider command-length limits. */
 const BASE64_CHUNK_BYTES = 192 * 1024;
-const BASE64_CHUNK_CHARS = Math.ceil(BASE64_CHUNK_BYTES / 3) * 4;
+/** The platform backend caps a runCommand body at 64 KB, so its chunks are smaller. */
+const PLATFORM_BASE64_CHUNK_BYTES = 32 * 1024;
 
 /** Minimal ComputeSDK sandbox surface this adapter consumes (see computesdk Sandbox). */
 export interface ComputeSdkSandbox {
@@ -289,15 +294,34 @@ export class ComputeSdkSandboxProvider implements SandboxProvider {
     if (browser.exitCode !== 0) {
       throw new Error(browser.stderr || "could not install the computer browser");
     }
-    // Without the helper the page tools fall back to the desktop tools, which
-    // still work, so a failed install warns rather than fails the boot.
-    const pageBrowser = await this.runChecked(sandbox, installPageBrowserCommand(), context);
-    if (pageBrowser.exitCode !== 0) {
-      getLogger().warn("sandbox.page_browser", {
-        provider: "computesdk",
-        outcome: "install_failed",
-        error: pageBrowser.stderr,
-      });
+    // The helper's files go over as a written payload rather than inline in the
+    // command: some backends cap a runCommand body (platform: 64 KB) and the
+    // embedded archive exceeds it.
+    const payloadPath = workspacePath(env.workspaceDir, ".rakazo-page-browser-payload.gz");
+    try {
+      await this.writeFile(
+        computer,
+        { path: ".rakazo-page-browser-payload.gz", content: pageBrowserFilesPayload() },
+        context,
+      );
+      const script = [installAgentBrowserCommand(), installPageBrowserFromFileCommand(payloadPath)]
+        .map((step) => `( ${step}\n)`)
+        .join(" && ");
+      // Without the helper the page tools fall back to the desktop tools, which
+      // still work, so a failed install warns rather than fails the boot.
+      const pageBrowser = await this.runChecked(sandbox, script, context);
+      if (pageBrowser.exitCode !== 0) {
+        getLogger().warn("sandbox.page_browser", {
+          provider: "computesdk",
+          outcome: "install_failed",
+          error: pageBrowser.stderr,
+        });
+      }
+    } finally {
+      await bestEffort(
+        "remove page-browser payload",
+        sandbox.runCommand(`rm -f ${shellQuote(payloadPath)}`, { timeout: 30_000 }),
+      );
     }
   }
 
@@ -426,6 +450,8 @@ export class ComputeSdkSandboxProvider implements SandboxProvider {
     const env = await this.computerEnvironment(computer);
     const target = workspacePath(env.workspaceDir, file.path);
     const encoded = Buffer.from(file.content).toString("base64");
+    const chunkBytes = this.backend === "platform" ? PLATFORM_BASE64_CHUNK_BYTES : BASE64_CHUNK_BYTES;
+    const chunkChars = Math.ceil(chunkBytes / 3) * 4;
     const mkdir = `mkdir -p ${shellQuote(target.slice(0, target.lastIndexOf("/")) || env.workspaceDir)}`;
     if (!encoded) {
       const result = await this.runChecked(
@@ -435,13 +461,13 @@ export class ComputeSdkSandboxProvider implements SandboxProvider {
       );
       if (result.exitCode !== 0) throw new Error(result.stderr || "computer file write failed");
     } else {
-      const first = `${mkdir} && printf %s ${shellQuote(encoded.slice(0, BASE64_CHUNK_CHARS))} | base64 -d > ${shellQuote(target)}`;
+      const first = `${mkdir} && printf %s ${shellQuote(encoded.slice(0, chunkChars))} | base64 -d > ${shellQuote(target)}`;
       const firstResult = await this.runChecked(sandbox, first, context);
       if (firstResult.exitCode !== 0) {
         throw new Error(firstResult.stderr || "computer file write failed");
       }
-      for (let offset = BASE64_CHUNK_CHARS; offset < encoded.length; offset += BASE64_CHUNK_CHARS) {
-        const chunk = encoded.slice(offset, offset + BASE64_CHUNK_CHARS);
+      for (let offset = chunkChars; offset < encoded.length; offset += chunkChars) {
+        const chunk = encoded.slice(offset, offset + chunkChars);
         const result = await this.runChecked(
           sandbox,
           `printf %s ${shellQuote(chunk)} | base64 -d >> ${shellQuote(target)}`,
